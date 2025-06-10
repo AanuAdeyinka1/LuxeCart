@@ -52,7 +52,10 @@ class CartController extends Controller
      */
     public function show(Product $product)
     {
-        return inertia::render('Carts', ['product'=>$product]);
+        $products = Product::whereIn('id', ['product_id'])->get();
+        return inertia::render('Carts', [
+            'products'=>[$product]
+        ]);
     }
 
     /**
