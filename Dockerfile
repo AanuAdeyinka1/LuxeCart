@@ -1,62 +1,20 @@
-# Use official PHP image with FPM
-FROM php:8.2-fpm
+FROM richarvey/nginx-php-fpm:1.7.2
 
-# Arguments defined in docker-compose.yml
-# ARG user
-# ARG uid
-ARG user=myuser  # Default value
-ARG uid=1000     # Default UID
+COPY . .
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libzip-dev \
-    supervisor
+# Image config
+ENV SKIP_COMPOSER 1
+ENV WEBROOT /var/www/html/public
+ENV PHP_ERRORS_STDERR 1
+ENV RUN_SCRIPTS 1
+ENV REAL_IP_HEADER 1
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Laravel config
+ENV APP_ENV production
+ENV APP_DEBUG false
+ENV LOG_CHANNEL stderr
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+# Allow composer to run as root
+ENV COMPOSER_ALLOW_SUPERUSER 1
 
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Create system user to run Composer and Artisan Commands
-RUN if ! getent group www-data >/dev/null; then groupadd -r www-data; fi && \
-    groupadd -r $user && \
-    useradd -r -u $uid -g $user -G www-data,root -d /home/$user $user && \
-    mkdir -p /home/$user && \
-    chown $uid:$uid /home/$user || true  # Ignore errors if already correct
-
-    
-# RUN useradd --no-user-group --non-unique --uid $uid --home /home/$user $user
-# RUN usermod -aG www-data,root $user
-# RUN mkdir -p /home/$user/.composer && \
-#     chown -R $user:$user /home/$user
-
-# Set working directory
-WORKDIR /var/www
-
-# Copy existing application directory contents
-COPY . /var/www
-
-# Copy PHP configuration
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/app.ini
-
-# Install dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev
-
-# Change owner of the web directory
-RUN chown -R $user:www-data /var/www/storage /var/www/bootstrap/cache
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
-
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
+CMD ["/start.sh"]
