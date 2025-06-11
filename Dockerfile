@@ -2,8 +2,10 @@
 FROM php:8.2-fpm
 
 # Arguments defined in docker-compose.yml
-ARG user
-ARG uid
+# ARG user
+# ARG uid
+ARG user=myuser  # Default value
+ARG uid=1000     # Default UID
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -27,10 +29,11 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Create system user to run Composer and Artisan Commands
-RUN groupadd -r $user && \
+RUN if ! getent group www-data >/dev/null; then groupadd -r www-data; fi && \
+    groupadd -r $user && \
     useradd -r -u $uid -g $user -G www-data,root -d /home/$user $user && \
     mkdir -p /home/$user && \
-    chown $user:$user /home/$user
+    chown $uid:$uid /home/$user || true  # Ignore errors if already correct
 
     
 # RUN useradd --no-user-group --non-unique --uid $uid --home /home/$user $user
